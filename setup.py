@@ -16,7 +16,9 @@ setup(
     install_requires = [
         'click',
         'tastier',
-        'requests'
+        'requests',
+        'librosa',
+        'webrtcvad'
     ],
     classifiers = [
         'Programming Language :: Python :: 3.10'
