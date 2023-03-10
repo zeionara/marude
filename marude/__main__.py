@@ -30,10 +30,12 @@ def tts(text: str, path: str, model: str):
 @option('--shortest-part', '-sp', type = float, default = 60.0)
 @option('--longest-part', '-sp', type = float, default = 100.0)
 def split(input_path: str, output_path: str, shortest_silence: float, shortest_part: float, longest_part: float):
-    if output_path is None:
-        makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
+    print(CloudVoiceClient().asr('assets/real-colonel/00.wav'))
 
-    split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
+    # if output_path is None:
+    #     makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
+
+    # split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
 
 
 if __name__ == '__main__':
