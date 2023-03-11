@@ -1,3 +1,4 @@
+import taglib
 from pydub.utils import mediainfo
 import librosa
 
@@ -7,6 +8,32 @@ N_WEBRTC_VAD_SUPPORTED_SAMPLING_RATES = len(WEBRTC_VAD_SUPPORTED_SAMPLING_RATES)
 
 def get_sampling_rate(input_path: str) -> int:
     return int(mediainfo(input_path)["sample_rate"])
+
+
+# def get_title(input_path: str) -> int:
+#     # return mediainfo(input_path)
+#     return taglib.File(input_path).tags
+
+
+def refresh_tags(input_path: str) -> int:
+    taglib.File(input_path).save()
+
+
+def set_part(input_path: str, part_index: int, n_parts: int, width: int, default_title: str) -> int:
+    # return mediainfo(input_path)
+    part = eval(f'f"{{part_index:0{width}d}}/{{n_parts:0{width}d}}"')
+    file = taglib.File(input_path)
+
+    if 'TITLE' in (tags := file.tags):
+        title = ' '.join(tags['TITLE'])
+    else:
+        title = default_title
+
+    file.tags['TITLE'] = [f"{title} {part}"]
+    file.tags['PART'] = [part]
+    file.tags['PART_INDEX'] = [str(part_index)]
+    file.tags['N_PARTS'] = [str(n_parts)]
+    file.save()
 
 
 def pick_webrtc_vad_supported_sampling_rate(rate: int) -> int:

@@ -26,7 +26,13 @@ python -m marude tts 'Привет, мир' -m pavel -p message.mp3
 
 The provided text (which must be 1024 characters long or shorter) will be converted into speech and saved as an audiofile `message.mp3`. By default the file is saved at `assets/message.mp3`.
 
-The module can be used programmatically as well. First, install the module through [pip](https://pypi.org/project/marude/):
+The module can be used programmatically as well. First, install the system-wise dependencies:
+
+```sh
+sudo apt-get update && sudo apt-get install ffmpeg libtag1-dev
+```
+
+Then, install the module through [pip](https://pypi.org/project/marude/):
 
 ```sh
 pip install marude

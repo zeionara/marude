@@ -19,7 +19,8 @@ setup(
         'requests',
         'librosa',
         'webrtcvad',
-        'pydub'
+        'pydub',
+        'pytaglib'
     ],
     classifiers = [
         'Programming Language :: Python :: 3.10'

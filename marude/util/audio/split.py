@@ -9,12 +9,12 @@ from dataclasses import dataclass
 import wave
 
 from webrtcvad import Vad
-# from tasty import pipe
+from tasty import pipe
 
 from ..path import drop_extension, add_extension, Extension
 from ..number import get_width
 from .conversion import to_wav, trim_audio_ffmpeg, N_CHANNELS, DEFAULT_SAMPLING_RATE
-from .analysis import get_duration, WEBRTC_VAD_SUPPORTED_SAMPLING_RATES  # , get_sampling_rate, pick_webrtc_vad_supported_sampling_rate
+from .analysis import get_duration, set_part, refresh_tags, WEBRTC_VAD_SUPPORTED_SAMPLING_RATES  # , get_sampling_rate, pick_webrtc_vad_supported_sampling_rate
 from .Frame import Frame
 
 
@@ -92,6 +92,7 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
 
     print(f"Started converting {input_path} to .wav which is saved as {converted_path}")
     to_wav(input_path, output_path = converted_path, sampling_rate = sampling_rate)
+    refresh_tags(converted_path)
 
     duration = get_duration(converted_path)
     print(f"Finished converting {input_path} to .wav which is saved as {converted_path}. Audio duration is {duration} seconds")
@@ -140,9 +141,13 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
     final_list[0].begin_timestamp = 0
     final_list[-1].end_timestamp = duration
 
-    index_width = get_width(len(final_list) - 1)
-    path_formatter = f'f"{{i:0{index_width}d}}"'
-    progress_log_formatter = f'f"Finished saving {{i + 1:0{index_width}d}}/{{n_segments:0{index_width}d}} segments. The latest segment was saved as {{segment_path}}"'
+    path_index_width = get_width(len(final_list) - 1)
+    log_index_width = get_width(len(final_list))
+
+    path_formatter = f'f"{{i:0{path_index_width}d}}"'
+    progress_log_formatter = f'f"Finished saving {{i + 1:0{log_index_width}d}}/{{n_segments:0{log_index_width}d}} segments. The latest segment was saved as {{segment_path}}"'
+
+    default_title = input_path | pipe | drop_extension | pipe | path.basename
 
     print("Started saving segments on disk")
     for i, seg in enumerate(final_list):
@@ -161,8 +166,8 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
         trim_audio_ffmpeg(input_path, segment_path, stime, etime, sampling_rate = sampling_rate)
         print(eval(progress_log_formatter))
 
-        if i > 1:
-            break
+        set_part(segment_path, part_index = i + 1, n_parts = n_segments, width = log_index_width, default_title = default_title)
+        # print(get_title(segment_path))
 
         if queue is not None:
             queue.put(SegmentIsReadyMessage(path = segment_path, last = i == n_segments - 1), block = False)

@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class Extension(Enum):
+    MP3 = 'mp3'
     WAV = 'wav'
     TXT = 'txt'
 
