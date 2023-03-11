@@ -5,7 +5,7 @@ from click import group, argument, option, Choice
 from tasty import pipe
 
 from .util.path import drop_extension, add_extension, Extension
-from .util.audio import split
+from .util.audio import split as split_
 
 from .CloudVoiceClient import CloudVoiceClient, Voice
 
@@ -67,7 +67,7 @@ def asr(input_path: str, output_path: str, shortest_silence: float, shortest_par
 
     queue = Queue()
 
-    producer = Process(target = split, args = (input_path, output_path, shortest_silence, longest_part, shortest_part, queue))
+    producer = Process(target = split_, args = (input_path, output_path, shortest_silence, longest_part, shortest_part, queue))
     producer.start()
 
     consumer = Process(
@@ -79,6 +79,19 @@ def asr(input_path: str, output_path: str, shortest_silence: float, shortest_par
         )
     )
     consumer.start()
+
+
+@main.command()
+@argument('input-path', type = str)
+@argument('output-path', type = str, required = False)
+@option('--shortest-silence', '-ss', type = float, default = 0.5)
+@option('--shortest-part', '-sp', type = float, default = 60.0)
+@option('--longest-part', '-lp', type = float, default = 100.0)
+def split(input_path: str, output_path: str, shortest_silence: float, shortest_part: float, longest_part: float):
+    if output_path is None:
+        makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
+
+    split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
 
 
 if __name__ == '__main__':

@@ -18,7 +18,8 @@ setup(
         'tastier',
         'requests',
         'librosa',
-        'webrtcvad'
+        'webrtcvad',
+        'pydub'
     ],
     classifiers = [
         'Programming Language :: Python :: 3.10'

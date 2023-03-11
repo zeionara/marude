@@ -9,12 +9,16 @@ from dataclasses import dataclass
 import wave
 
 from webrtcvad import Vad
+# from tasty import pipe
 
 from ..path import drop_extension, add_extension, Extension
 from ..number import get_width
-from .conversion import to_wav, trim_audio_ffmpeg, DEFAULT_SAMPLING_RATE
-from .analysis import get_duration
+from .conversion import to_wav, trim_audio_ffmpeg, N_CHANNELS, DEFAULT_SAMPLING_RATE
+from .analysis import get_duration, WEBRTC_VAD_SUPPORTED_SAMPLING_RATES  # , get_sampling_rate, pick_webrtc_vad_supported_sampling_rate
 from .Frame import Frame
+
+
+VAD_AGGRESSIVENESS_CODE = 3  # 0, 1, 2, or 3 (3 is the highest)
 
 
 @dataclass
@@ -39,11 +43,11 @@ def read_wave(input_path):
     """
     with contextlib.closing(wave.open(input_path, 'rb')) as wf:
         num_channels = wf.getnchannels()
-        assert num_channels == 1  # configured in to_wav
-        sample_width = wf.getsampwidth()
-        assert sample_width == 2
+        assert num_channels == N_CHANNELS  # configured in to_wav
+        # sample_width = wf.getsampwidth()
+        # assert sample_width == 2
         sample_rate = wf.getframerate()
-        assert sample_rate in (16000, 22050, 32000, 48000)  # configured in to_wav
+        assert sample_rate in WEBRTC_VAD_SUPPORTED_SAMPLING_RATES  # configured in to_wav
         pcm_data = wf.readframes(wf.getnframes())
         return pcm_data, sample_rate
 
@@ -55,7 +59,7 @@ def vad_audio_segment(input_path, gap_size=0.5, frame_duration=10):
     :param frame_duration: frame step (mili seconds)
     :return:
     """
-    vad = Vad(3)
+    vad = Vad(VAD_AGGRESSIVENESS_CODE)
 
     audio, sample_rate = read_wave(input_path)
 
@@ -78,14 +82,18 @@ def vad_audio_segment(input_path, gap_size=0.5, frame_duration=10):
     return audio_segment
 
 
-def split(input_path: str, output_path: str, min_silence: float, max_duration: float, min_duration: float, queue: Queue, sampling_rate: int = DEFAULT_SAMPLING_RATE):
+def split(input_path: str, output_path: str, min_silence: float, max_duration: float, min_duration: float, queue: Queue = None, sampling_rate: int = None):
+
+    if sampling_rate is None:
+        # sampling_rate = input_path | pipe | get_sampling_rate | pipe | pick_webrtc_vad_supported_sampling_rate
+        sampling_rate = DEFAULT_SAMPLING_RATE
 
     converted_path = add_extension(f'{drop_extension(input_path)}-converted', Extension.WAV)
 
     print(f"Started converting {input_path} to .wav which is saved as {converted_path}")
     to_wav(input_path, output_path = converted_path, sampling_rate = sampling_rate)
 
-    duration = get_duration(converted_path, sampling_rate = sampling_rate)
+    duration = get_duration(converted_path)
     print(f"Finished converting {input_path} to .wav which is saved as {converted_path}. Audio duration is {duration} seconds")
 
     print(f"Started segmenting {converted_path}")
@@ -150,7 +158,11 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
             etime = (etime + final_list[i + 1].begin_timestamp) / 2
 
         segment_path = add_extension(path.join(output_path, eval(path_formatter)), Extension.WAV)
-        trim_audio_ffmpeg(input_path, segment_path, stime, etime)
+        trim_audio_ffmpeg(input_path, segment_path, stime, etime, sampling_rate = sampling_rate)
         print(eval(progress_log_formatter))
 
-        queue.put(SegmentIsReadyMessage(path = segment_path, last = i == n_segments - 1), block = False)
+        if i > 1:
+            break
+
+        if queue is not None:
+            queue.put(SegmentIsReadyMessage(path = segment_path, last = i == n_segments - 1), block = False)
