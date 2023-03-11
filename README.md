@@ -102,3 +102,5 @@ Recognized text from file assets/real-colonel/12.wav
 Recognized text from file assets/real-colonel/13.wav
 Recognized text from file assets/real-colonel/14.wav
 ```
+
+See details of this example [here](https://cutt.ly/marude-examples). There is also another example with 3-hour recording, which was handled in ~ 12 minutes.

@@ -1,11 +1,11 @@
-from os import makedirs, path, remove
+from os import makedirs, path as os_path, remove
 from multiprocessing import Queue, Process
 
 from click import group, argument, option, Choice
 from tasty import pipe
 
 from .util.path import drop_extension, add_extension, Extension
-from .util.audio import split as split_
+from .util.audio import split
 
 from .CloudVoiceClient import CloudVoiceClient, Voice
 
@@ -61,28 +61,24 @@ def _recognize_text(queue: Queue, result_path: str, result_path_punctuated: str)
 @option('--shortest-part', '-sp', type = float, default = 60.0)
 @option('--longest-part', '-sp', type = float, default = 100.0)
 def asr(input_path: str, output_path: str, shortest_silence: float, shortest_part: float, longest_part: float):
-    # print(CloudVoiceClient().asr('assets/real-colonel/00.wav'))
 
     if output_path is None:
         makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
 
     queue = Queue()
 
-    # split_(input_path, output_path, shortest_silence, longest_part, shortest_part, queue)
-    producer = Process(target = split_, args = (input_path, output_path, shortest_silence, longest_part, shortest_part, queue))
+    producer = Process(target = split, args = (input_path, output_path, shortest_silence, longest_part, shortest_part, queue))
     producer.start()
 
     consumer = Process(
         target = _recognize_text,
         args = (
             queue,
-            add_extension(path.join(output_path, 'text'), Extension.TXT),
-            add_extension(path.join(output_path, 'text-punctuated'), Extension.TXT),
+            add_extension(os_path.join(output_path, 'text'), Extension.TXT),
+            add_extension(os_path.join(output_path, 'text-punctuated'), Extension.TXT),
         )
     )
     consumer.start()
-
-    print(queue.qsize())
 
 
 if __name__ == '__main__':
