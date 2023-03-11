@@ -1,5 +1,6 @@
 # parts of code are borrowed from https://github.com/gkrsv/split_audio.git
 
+from multiprocessing import Queue
 from os import remove, path
 import contextlib
 
@@ -24,6 +25,12 @@ class Segment:
     @property
     def duration(self):
         return self.end_timestamp - self.begin_timestamp
+
+
+@dataclass
+class SegmentIsReadyMessage:
+    path: str
+    last: bool = False
 
 
 def read_wave(input_path):
@@ -71,7 +78,7 @@ def vad_audio_segment(input_path, gap_size=0.5, frame_duration=10):
     return audio_segment
 
 
-def split(input_path: str, output_path: str, min_silence: float, max_duration: float, min_duration: float, sampling_rate: int = DEFAULT_SAMPLING_RATE):
+def split(input_path: str, output_path: str, min_silence: float, max_duration: float, min_duration: float, queue: Queue, sampling_rate: int = DEFAULT_SAMPLING_RATE):
 
     converted_path = add_extension(f'{drop_extension(input_path)}-converted', Extension.WAV)
 
@@ -127,6 +134,7 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
 
     index_width = get_width(len(final_list) - 1)
     path_formatter = f'f"{{i:0{index_width}d}}"'
+    progress_log_formatter = f'f"Finished saving {{i + 1:0{index_width}d}}/{{n_segments:0{index_width}d}} segments. The latest segment was saved as {{segment_path}}"'
 
     print("Started saving segments on disk")
     for i, seg in enumerate(final_list):
@@ -143,4 +151,6 @@ def split(input_path: str, output_path: str, min_silence: float, max_duration: f
 
         segment_path = add_extension(path.join(output_path, eval(path_formatter)), Extension.WAV)
         trim_audio_ffmpeg(input_path, segment_path, stime, etime)
-        print(f"Finished saving {i:04d}/{n_segments:04d} segments. The latest segment was saved as {segment_path}")
+        print(eval(progress_log_formatter))
+
+        queue.put(SegmentIsReadyMessage(path = segment_path, last = i == n_segments - 1), block = False)

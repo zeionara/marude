@@ -19,7 +19,7 @@ class Voice(Enum):
 @dataclass
 class RecognizedText:
     text: str
-    punctuated_text: str
+    text_punctuated: str
 
     @classmethod
     @as_tuple
@@ -60,6 +60,8 @@ class CloudVoiceClient:
     def asr(self, path: str) -> tuple[RecognizedText]:
         assert (duration := get_duration(path)) < self.max_speech_duration, f'The audiofile is too long: {duration} > {self.max_speech_duration}'
         assert (size := path_.getsize(path) / 1e+6) < self.max_speech_file_size, f'The audiofile is too big: {size} > {self.max_speech_file_size}'
+
+        # return (RecognizedText('foo', 'bar'), )
 
         with open(path, 'rb') as file:
             data = file.read()

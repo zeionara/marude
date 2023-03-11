@@ -26,7 +26,7 @@ def trim_audio_ffmpeg(input_path: str, segment_path: str, begin_timestamp: float
         f'-ss {begin_timestamp:.2f} -to {end_timestamp:.2f} {segment_path} -y -loglevel panic'
     )
 
-    print(command)
+    # print(command)
 
     run(command)
 

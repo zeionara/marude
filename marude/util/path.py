@@ -3,6 +3,7 @@ from enum import Enum
 
 class Extension(Enum):
     WAV = 'wav'
+    TXT = 'txt'
 
 
 EXTENSION_SEP = '.'
