@@ -8,6 +8,7 @@ from .util.path import drop_extension, add_extension, Extension
 from .util.audio import split as split_
 
 from .CloudVoiceClient import CloudVoiceClient, Voice
+from .Anecdote import AnecdoteCollection
 
 
 @group()
@@ -92,6 +93,13 @@ def split(input_path: str, output_path: str, shortest_silence: float, shortest_p
         makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
 
     split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
+
+
+@main.command()
+@argument('output-path', type = str)
+@option('--batch-size', '-b', type = int, default = 100)
+def fetch_anecdotes(output_path: str, batch_size: int):
+    AnecdoteCollection.from_vk('anekdotikategoriib', batch_size = batch_size).as_df.to_csv(output_path, sep='\t')
 
 
 if __name__ == '__main__':
