@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import environ as env
 from urllib.parse import urlencode
 from dataclasses import dataclass
@@ -5,9 +7,9 @@ from datetime import datetime
 
 from requests import post
 from tasty import pipe
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 
-from .util.string import normalize_spaces, normalize_dots
+from .util.string import normalize_spaces, normalize_dots, from_date_time, to_date_time
 
 
 MARUDE_VK_API_KEY = env['MARUDE_VK_API_KEY']
@@ -17,34 +19,52 @@ VK_API_VERSION = '5.131'
 @dataclass
 class Anecdote:
     text: str
-    date_time: datetime
+    published: datetime
     id_: int
     n_likes: int
     n_views: int
+    accessed: datetime
 
     def describe(self, sep: str = '\t'):
-        return f'{self.id_}{sep}{self.date_time.strftime("%d-%m-%Y %H:%M")}{sep}{self.text}{sep}{self.n_likes}{sep}{self.n_views}'
+        return f'{self.id_}{sep}{from_date_time(self.published)}{sep}{self.text}{sep}{self.n_likes}{sep}{self.n_views}{sep}{from_date_time(self.accessed)}'
 
     @property
     def as_dict(self):
         return {
             'text': self.text,
-            'date-time': self.date_time.strftime("%d-%m-%Y %H:%M"),
+            'published': from_date_time(self.published),
             'id': self.id_,
             'n-likes': self.n_likes,
-            'n-views': self.n_views
+            'n-views': self.n_views,
+            'accessed': from_date_time(self.accessed)
         }
+
+    @classmethod
+    def from_dict(cls, values: dict):
+        return Anecdote(
+            values['text'],
+            to_date_time(values['published']),
+            values['id'],
+            values['n-likes'],
+            values['n-views'],
+            to_date_time(values['accessed'])
+        )
 
 
 class AnecdoteCollection:
-    def __init__(self, items: list[Anecdote]):
+    def __init__(self, items: list[Anecdote], ids: set[int]):
         self.items = items
+        self.ids = ids
 
     @classmethod
-    def from_vk(cls, domain: str, min_date_time: datetime = None, batch_size: int = 100, timeout: int = 10):
+    def from_vk(cls, domain: str, accessed: datetime, batch_size: int = 100, timeout: int = 10, after: AnecdoteCollection = None):
         offset = 0
         items = []
+        ids = set()
 
+        is_last_batch = None if after is None else False
+
+        # for _ in range(2):
         while True:
             response = post(
                 'https://api.vk.com/method/wall.get',
@@ -65,30 +85,59 @@ class AnecdoteCollection:
                     body = response.json()
                     new_items = (response_ := body['response'])['items']
 
-                    if len(new_items) == 0:
+                    if (n_new_items := len(new_items)) == 0:
                         break
 
-                    items.extend(
-                        new_item_objects := [
-                            Anecdote(
-                                item['text'] | pipe | normalize_spaces | pipe | normalize_dots,
-                                datetime.fromtimestamp(item['date']),
-                                item['id'],
-                                item['likes']['count'],
-                                item['views']['count']
-                            )
-                            for item in new_items
-                            if item.get('is_pinned') != 1
-                        ]
-                    )
+                    offset += n_new_items
 
-                    offset += len(new_items)
+                    n_new_item_objects = 0
 
-                    print(f'Handled {offset}/{response_["count"]} items (+{len(new_item_objects)}/{len(new_items)})')
+                    for item in new_items:
+                        # if item.get('is_pinned') != 1:
+                        item = Anecdote(
+                            item['text'] | pipe | normalize_spaces | pipe | normalize_dots,
+                            datetime.fromtimestamp(item['date']),
+                            item_id := item['id'],
+                            item['likes']['count'],
+                            item['views']['count'],
+                            accessed
+                        )
+
+                        if after is not None and item in after:
+                            is_last_batch = True
+                            break
+
+                        n_new_item_objects += 1
+                        items.append(item)
+                        ids.add(item_id)
+
+                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects}/{n_new_items})')
+
+                    if is_last_batch is True:
+                        break
                 case _:
                     raise ValueError(f'Incorrect response code: {status_code}')
 
-        return AnecdoteCollection(items = items)
+        return AnecdoteCollection(items = items, ids = ids)
+
+    @classmethod
+    def from_file(cls, path: str):
+        df = read_csv(path, sep = '\t')
+
+        items = []
+        ids = set()
+
+        for item in df.to_dict('records'):
+            items.append(item := Anecdote.from_dict(item))
+            ids.add(item.id_)
+
+        return AnecdoteCollection(items, ids)
+
+    def __contains__(self, item: Anecdote):
+        return item.id_ in self.ids
+
+    def __getitem__(self, index: int):
+        return self.items[index]
 
     @property
     def as_df(self):

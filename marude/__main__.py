@@ -1,5 +1,6 @@
 from os import makedirs, path as os_path, remove
 from multiprocessing import Queue, Process
+from datetime import datetime
 
 from click import group, argument, option, Choice
 from tasty import pipe
@@ -98,8 +99,13 @@ def split(input_path: str, output_path: str, shortest_silence: float, shortest_p
 @main.command()
 @argument('output-path', type = str)
 @option('--batch-size', '-b', type = int, default = 100)
-def fetch_anecdotes(output_path: str, batch_size: int):
-    AnecdoteCollection.from_vk('anekdotikategoriib', batch_size = batch_size).as_df.to_csv(output_path, sep='\t')
+@option('--after', '-a', type = str, default = None)
+def fetch_anecdotes(output_path: str, batch_size: int, after: str):
+    if after is None:
+        AnecdoteCollection.from_vk('anekdotikategoriib', datetime.now(), batch_size = batch_size).as_df.to_csv(output_path, sep = '\t', index = False)
+    else:
+        anecdotes = AnecdoteCollection.from_file(after)
+        AnecdoteCollection.from_vk('anekdotikategoriib', datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
 
 
 if __name__ == '__main__':
