@@ -49,7 +49,7 @@ def segment(string: str, max_length: int = 1024):
             segments.append(sentence[:max_length])
             sentence = sentence[max_length:]
 
-        if sum(len(segment_part) for segment_part in current_segment) + len(current_segment) - 1 + len(sentence) > max_length:
+        if sum(len(segment_part) for segment_part in current_segment) + len(current_segment) + len(sentence) > max_length:
             append_current_segment()
 
         current_segment.append(sentence)

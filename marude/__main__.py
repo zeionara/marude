@@ -121,17 +121,25 @@ def speak(input_path: str, output_path: str):
 
     client = CloudVoiceClient()
 
-    # df.dropna(inplace = True, subset = ('text', ))
+    df.dropna(inplace = True, subset = ('text', ))
 
-    # print(df[df['text'].str.len() > 1000])
-    segments = segment(add_sentence_terminators(df.iloc[23]['text']))
+    for i, row in df[~df['text'].str.contains('http')].iloc[::-1].reset_index().iterrows():
+        print(i, text := row['text'])
 
-    speech = segments[0] | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file
+        output_file_path = os_path.join(output_path, f'{row["id"]}-{i:06d}.mp3')
 
-    for segment_ in segments[1:]:
-        speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
+        segments = segment(add_sentence_terminators(text))
 
-    speech.export('assets/anecdote.mp3', format = 'mp3')
+        # for segment_ in segments:
+        #     print(segment_)
+        #     print(len(segment_))
+
+        speech = segments[0] | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file
+
+        for segment_ in segments[1:]:
+            speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
+
+        speech.export(output_file_path, format = 'mp3')
 
 
 if __name__ == '__main__':
