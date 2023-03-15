@@ -1,12 +1,15 @@
+from io import BytesIO
 from os import makedirs, path as os_path, remove
 from multiprocessing import Queue, Process
 from datetime import datetime
 
 from click import group, argument, option, Choice
 from tasty import pipe
+from pydub import AudioSegment
 
 from .util.path import drop_extension, add_extension, Extension
 from .util.audio import split as split_
+from .util.string import segment, add_sentence_terminators
 
 from .CloudVoiceClient import CloudVoiceClient, Voice
 from .Anecdote import AnecdoteCollection
@@ -106,6 +109,29 @@ def fetch_anecdotes(output_path: str, batch_size: int, after: str):
     else:
         anecdotes = AnecdoteCollection.from_file(after)
         AnecdoteCollection.from_vk('anekdotikategoriib', datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
+
+
+@main.command()
+@argument('input-path', default = 'assets/anecdotes.tsv')
+@argument('output-path', default = 'assets/anecdotes')
+def speak(input_path: str, output_path: str):
+    makedirs(output_path, exist_ok = True)
+
+    df = AnecdoteCollection.from_file(input_path).as_df
+
+    client = CloudVoiceClient()
+
+    # df.dropna(inplace = True, subset = ('text', ))
+
+    # print(df[df['text'].str.len() > 1000])
+    segments = segment(add_sentence_terminators(df.iloc[23]['text']))
+
+    speech = segments[0] | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file
+
+    for segment_ in segments[1:]:
+        speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
+
+    speech.export('assets/anecdote.mp3', format = 'mp3')
 
 
 if __name__ == '__main__':
