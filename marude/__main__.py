@@ -126,7 +126,7 @@ def speak(input_path: str, output_path: str):
     for i, row in df[~df['text'].str.contains('http')].iloc[::-1].reset_index().iterrows():
         print(i, text := row['text'])
 
-        output_file_path = os_path.join(output_path, f'{row["id"]}-{i:06d}.mp3')
+        output_file_path = os_path.join(output_path, f'{i:06d}-{row["id"]}.mp3')
 
         segments = segment(add_sentence_terminators(text))
 
@@ -140,6 +140,8 @@ def speak(input_path: str, output_path: str):
             speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
 
         speech.export(output_file_path, format = 'mp3')
+
+        dd
 
 
 if __name__ == '__main__':

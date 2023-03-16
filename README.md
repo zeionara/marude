@@ -4,10 +4,17 @@
 
 ## Installation
 
+To install system-wise dependencies:
+
+```sh
+sudo apt-get update && sudo apt-get install build-essential libtag1-dev ffmpeg
+```
+
 To create a conda environment and install dependencies use the following command:
 
 ```sh
-conda create -f environment.yml
+conda env create -f environment.yml
+python -c 'import nltk; nltk.download("punkt")'
 ```
 
 Then activate created environment:
