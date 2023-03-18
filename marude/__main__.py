@@ -6,6 +6,7 @@ from datetime import datetime
 from click import group, argument, option, Choice
 from tasty import pipe
 from pydub import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 
 from .util.path import drop_extension, add_extension, Extension
 from .util.audio import split as split_
@@ -124,9 +125,12 @@ def speak(input_path: str, output_path: str):
     df.dropna(inplace = True, subset = ('text', ))
 
     for i, row in df[~df['text'].str.contains('http')].iloc[::-1].reset_index().iterrows():
-        print(i, text := row['text'])
-
         output_file_path = os_path.join(output_path, f'{i:06d}-{row["id"]}.mp3')
+
+        if os_path.isfile(output_file_path):
+            continue
+
+        print(i, text := row['text'])
 
         segments = segment(add_sentence_terminators(text))
 
@@ -134,14 +138,16 @@ def speak(input_path: str, output_path: str):
         #     print(segment_)
         #     print(len(segment_))
 
-        speech = segments[0] | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file
+        try:
+            speech = segments[0] | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file
 
-        for segment_ in segments[1:]:
-            speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
+            for segment_ in segments[1:]:
+                speech = speech.append(segment_ | pipe | client.tts | pipe | BytesIO | pipe | AudioSegment.from_file)
+        except CouldntDecodeError:
+            print(f'Cannot handle text "{text}" and save result as {output_file_path}. Skipping.')
+            continue
 
         speech.export(output_file_path, format = 'mp3')
-
-        dd
 
 
 if __name__ == '__main__':

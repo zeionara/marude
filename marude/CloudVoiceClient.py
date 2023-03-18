@@ -6,6 +6,7 @@ from requests import post, Response
 
 from .util.audio.analysis import get_duration
 from .util.collection import as_tuple
+from .util.request import retry
 
 DEFAULT_TIMEOUT = 10  # seconds
 
@@ -44,6 +45,7 @@ class CloudVoiceClient:
             case _:
                 raise ValueError(f'Unacceptable response status code: {status_code}')
 
+    @retry(after = 2, multiplier = 2)
     def tts(self, text: str) -> bytes:
         assert len(text) <= self.max_text_length, f'Text must be at most {self.max_text_length} characters long'
 
