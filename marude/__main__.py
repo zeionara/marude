@@ -102,12 +102,17 @@ def split(input_path: str, output_path: str, shortest_silence: float, shortest_p
     split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
 
 
-@main.command()
+@main.group()
+def anecdote():
+    pass
+
+
+@anecdote.command()
 @argument('output-path', type = str)
 @option('--batch-size', '-b', type = int, default = 100)
 @option('--after', '-a', type = str, default = None)
 @option('--community', '-c', type = str, default = 'anekdotikategoriib')
-def fetch_anecdotes(output_path: str, batch_size: int, after: str, community: str):
+def fetch(output_path: str, batch_size: int, after: str, community: str):
     if after is None:
         AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size).as_df.to_csv(output_path, sep = '\t', index = False)
     else:
@@ -115,17 +120,17 @@ def fetch_anecdotes(output_path: str, batch_size: int, after: str, community: st
         AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
 
 
-@main.command()
+@anecdote.command()
 @argument('input-path', type = str, default = 'assets/anecdotes.tsv')
-def explore_anecdotes(input_path: str):
+def explore(input_path: str):
     for date in read_csv(input_path, sep = '\t').published:
         print(date)
 
 
-@main.command()
+@anecdote.command(name = 'tts')
 @argument('input-path', default = 'assets/anecdotes.tsv')
 @argument('output-path', default = 'assets/anecdotes')
-def speak(input_path: str, output_path: str):
+def anecdote_tts(input_path: str, output_path: str):
     makedirs(output_path, exist_ok = True)
 
     df = AnecdoteCollection.from_file(input_path).as_df
@@ -160,10 +165,10 @@ def speak(input_path: str, output_path: str):
         speech.export(output_file_path, format = 'mp3')
 
 
-@main.command()
+@anecdote.command()
 @argument('input-paths', nargs = -1, type = str)
 @argument('output-path', nargs = 1, type = str)
-def merge_anecdotes(input_paths: tuple[str], output_path: str):
+def merge(input_paths: tuple[str], output_path: str):
     dfs = []
 
     for input_path in input_paths:
