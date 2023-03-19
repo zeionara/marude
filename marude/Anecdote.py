@@ -94,14 +94,18 @@ class AnecdoteCollection:
 
                     for item in new_items:
                         # if item.get('is_pinned') != 1:
-                        item = Anecdote(
-                            item['text'] | pipe | normalize_spaces | pipe | normalize_dots,
-                            datetime.fromtimestamp(item['date']),
-                            item_id := item['id'],
-                            item['likes']['count'],
-                            item['views']['count'],
-                            accessed
-                        )
+                        try:
+                            views = item.get('views')
+                            item = Anecdote(
+                                item['text'] | pipe | normalize_spaces | pipe | normalize_dots,
+                                datetime.fromtimestamp(item['date']),
+                                item_id := item['id'],
+                                item['likes']['count'],
+                                None if views is None else views.get('count'),
+                                accessed
+                            )
+                        except KeyError:
+                            raise ValueError(f'Cannot decode post {item}')
 
                         if after is not None and item in after:
                             is_last_batch = True

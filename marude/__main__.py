@@ -7,6 +7,7 @@ from click import group, argument, option, Choice
 from tasty import pipe
 from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
+from pandas import read_csv
 
 from .util.path import drop_extension, add_extension, Extension
 from .util.audio import split as split_
@@ -104,12 +105,20 @@ def split(input_path: str, output_path: str, shortest_silence: float, shortest_p
 @argument('output-path', type = str)
 @option('--batch-size', '-b', type = int, default = 100)
 @option('--after', '-a', type = str, default = None)
-def fetch_anecdotes(output_path: str, batch_size: int, after: str):
+@option('--community', '-c', type = str, default = 'anekdotikategoriib')
+def fetch_anecdotes(output_path: str, batch_size: int, after: str, community: str):
     if after is None:
-        AnecdoteCollection.from_vk('anekdotikategoriib', datetime.now(), batch_size = batch_size).as_df.to_csv(output_path, sep = '\t', index = False)
+        AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size).as_df.to_csv(output_path, sep = '\t', index = False)
     else:
         anecdotes = AnecdoteCollection.from_file(after)
-        AnecdoteCollection.from_vk('anekdotikategoriib', datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
+        AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
+
+
+@main.command()
+@argument('input-path', type = str, default = 'assets/anecdotes.tsv')
+def explore_anecdotes(input_path: str):
+    for date in read_csv(input_path, sep = '\t').published:
+        print(date)
 
 
 @main.command()
