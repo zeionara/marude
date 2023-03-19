@@ -2,12 +2,13 @@ from io import BytesIO
 from os import makedirs, path as os_path, remove
 from multiprocessing import Queue, Process
 from datetime import datetime
+from pathlib import Path
 
 from click import group, argument, option, Choice
 from tasty import pipe
 from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
-from pandas import read_csv
+from pandas import read_csv, concat
 
 from .util.path import drop_extension, add_extension, Extension
 from .util.audio import split as split_
@@ -157,6 +158,22 @@ def speak(input_path: str, output_path: str):
             continue
 
         speech.export(output_file_path, format = 'mp3')
+
+
+@main.command()
+@argument('input-paths', nargs = -1, type = str)
+@argument('output-path', nargs = 1, type = str)
+def merge_anecdotes(input_paths: tuple[str], output_path: str):
+    dfs = []
+
+    for input_path in input_paths:
+        local_df = read_csv(input_path, sep = '\t')
+        local_df['source'] = Path(input_path).stem
+
+        dfs.append(local_df)
+
+    # print(concat(dfs).reset_index())
+    concat(dfs).to_csv(output_path, sep = '\t', index = False)
 
 
 if __name__ == '__main__':

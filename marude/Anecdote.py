@@ -24,6 +24,7 @@ class Anecdote:
     n_likes: int
     n_views: int
     accessed: datetime
+    _is_pinned: bool = False
 
     def describe(self, sep: str = '\t'):
         return f'{self.id_}{sep}{from_date_time(self.published)}{sep}{self.text}{sep}{self.n_likes}{sep}{self.n_views}{sep}{from_date_time(self.accessed)}'
@@ -102,12 +103,15 @@ class AnecdoteCollection:
                                 item_id := item['id'],
                                 item['likes']['count'],
                                 None if views is None else views.get('count'),
-                                accessed
+                                accessed,
+                                item.get('is_pinned') == 1
                             )
-                        except KeyError:
-                            raise ValueError(f'Cannot decode post {item}')
+                        except KeyError as e:
+                            raise ValueError(f'Cannot decode post {item}') from e
 
                         if after is not None and item in after:
+                            if item._is_pinned:
+                                continue
                             is_last_batch = True
                             break
 
