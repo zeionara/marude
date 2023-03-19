@@ -19,10 +19,11 @@ def retry(after: float = None, multiplier: float = None):
                         if multiplier is None:
                             delay = after
                         else:
-                            delay = after * (multiplier ^ attempts_count)
+                            delay = after * (multiplier ** attempts_count)
                             attempts_count += 1
-                        print(f'Error executing query: {error}, repeat after {delay} seconds')
+                        print(f'Error executing query: {error}, {attempts_count}th error, repeat after {delay} seconds')
                         sleep(delay)
-                    print(f'Error executing query: {error}, repeat immediately')
+                    else:
+                        print(f'Error executing query: {error}, {attempts_count}th error, repeat immediately')
         return __retry
     return _retry
