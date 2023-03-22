@@ -20,7 +20,9 @@ setup(
         'librosa',
         'webrtcvad',
         'pydub',
-        'pytaglib'
+        'pytaglib',
+        'ffmpeg-python',
+        'tqdm'
     ],
     classifiers = [
         'Programming Language :: Python :: 3.10'

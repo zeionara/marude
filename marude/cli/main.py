@@ -3,8 +3,12 @@ from multiprocessing import Queue, Process
 
 from click import group, argument, option, Choice
 from tasty import pipe
+from tqdm import tqdm
+# import taglib
+# from pydub.utils import mediainfo
+import ffmpeg
 
-from ..util.path import drop_extension, add_extension, Extension
+from ..util.path import drop_extension, add_extension, Extension, has_extension
 from ..util.audio import split as split_
 
 from ..CloudVoiceClient import CloudVoiceClient, Voice
@@ -87,8 +91,34 @@ def asr(input_path: str, output_path: str, shortest_silence: float, shortest_par
 @option('--shortest-silence', '-ss', type = float, default = 0.5)
 @option('--shortest-part', '-sp', type = float, default = 60.0)
 @option('--longest-part', '-lp', type = float, default = 100.0)
-def split(input_path: str, output_path: str, shortest_silence: float, shortest_part: float, longest_part: float):
+@option('--chapters', '-c', is_flag = True)
+def split(input_path: str, output_path: str, shortest_silence: float, shortest_part: float, longest_part: float, chapters: bool):
     if output_path is None:
         makedirs(output_path := input_path | pipe | drop_extension, exist_ok = True)
+
+    if chapters:
+        assert has_extension(input_path, Extension.M4B), 'Input file has an incorrect extension, expected: m4b'
+        meta = ffmpeg.probe(input_path, show_chapters = None)
+        input_stream = ffmpeg.input(input_path)
+
+        for chapter in tqdm(meta['chapters'], desc = 'Converting chapters'):
+            chapter_title = chapter['tags']['title']
+            # chapTitle = re.sub("['-]", "", chapTitle)
+            start_time = chapter['start_time']
+            end_time = chapter['end_time']
+            # chap_number = chapter['id'] + 1
+
+            track_name = f'{chapter_title}.{Extension.MP3.value}'
+
+            outbound = ffmpeg.output(input_stream, os_path.join(output_path, track_name), ss = start_time, to = end_time, map_chapters = '-1')
+            ffmpeg.run(outbound)
+
+            # outbound = ffmpeg.output(bookFile,trackName,ss=startTime,to=endTime,map_chapters="-1")
+            # ffmpeg.run(outbound)
+        # file = taglib.File(input_path)
+        # print(file.tags)
+        # meta = mediainfo(input_path)
+        # print(meta)
+        return
 
     split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
