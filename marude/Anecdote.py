@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from os import environ as env
 from urllib.parse import urlencode
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from .util.string import normalize_spaces, normalize_dots, from_date_time, to_da
 
 MARUDE_VK_API_KEY = env['MARUDE_VK_API_KEY']
 VK_API_VERSION = '5.131'
+
+URL_PATTERN = re.compile(r'https?://|vk\..+/|[Сс]сылка.+в комментах|ГОСПОДИ! БЛАГОСЛОВИ!!!|Подпишись')
 
 
 @dataclass
@@ -58,10 +61,12 @@ class AnecdoteCollection:
         self.ids = ids
 
     @classmethod
-    def from_vk(cls, domain: str, accessed: datetime, batch_size: int = 100, timeout: int = 10, after: AnecdoteCollection = None):
+    def from_vk(cls, domain: str, accessed: datetime, batch_size: int = 100, timeout: int = 10, after: AnecdoteCollection = None, max_n_batches: int = None, verbose: bool = False):
         offset = 0
         items = []
         ids = set()
+
+        n_batches = 0
 
         is_last_batch = None if after is None else False
 
@@ -81,6 +86,8 @@ class AnecdoteCollection:
                 timeout = timeout
             )
 
+            n_batches += 1
+
             match (status_code := response.status_code):
                 case 200:
                     body = response.json()
@@ -92,8 +99,21 @@ class AnecdoteCollection:
                     offset += n_new_items
 
                     n_new_item_objects = 0
+                    n_skipped = 0
 
                     for item in new_items:
+                        text = item['text']
+
+                        if not text or URL_PATTERN.search(text):
+                            n_skipped += 1
+                            continue
+
+                        if verbose:
+                            print('ANECDOTE')
+                            print('----->')
+                            print(item['text'])
+                            print('-----<')
+
                         # if item.get('is_pinned') != 1:
                         try:
                             views = item.get('views')
@@ -119,9 +139,9 @@ class AnecdoteCollection:
                         items.append(item)
                         ids.add(item_id)
 
-                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects}/{n_new_items})')
+                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects + n_skipped}-{n_skipped}/{n_new_items})')
 
-                    if is_last_batch is True:
+                    if is_last_batch is True or max_n_batches is not None and n_batches >= max_n_batches:
                         break
                 case _:
                     raise ValueError(f'Incorrect response code: {status_code}')

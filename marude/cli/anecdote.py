@@ -26,12 +26,35 @@ def anecdote():
 @option('--batch-size', '-b', type = int, default = 100)
 @option('--after', '-a', type = str, default = None)
 @option('--community', '-c', type = str, default = 'anekdotikategoriib')
-def fetch(output_path: str, batch_size: int, after: str, community: str):
+@option('--max-n-batches', '-n', type = int, default = None)
+@option('--verbose', '-v', is_flag = True)
+def fetch(output_path: str, batch_size: int, after: str, community: str, max_n_batches: int, verbose: bool):
     if after is None:
-        AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size).as_df.to_csv(output_path, sep = '\t', index = False)
+        AnecdoteCollection.from_vk(
+            community, datetime.now(), batch_size = batch_size, max_n_batches = max_n_batches, verbose = verbose
+        ).as_df.to_csv(output_path, sep = '\t', index = False)
     else:
         anecdotes = AnecdoteCollection.from_file(after)
-        AnecdoteCollection.from_vk(community, datetime.now(), batch_size = batch_size, after = anecdotes).as_df.to_csv(output_path, sep = '\t', index = False)
+        AnecdoteCollection.from_vk(
+            community, datetime.now(), batch_size = batch_size, after = anecdotes, max_n_batches = max_n_batches, verbose = verbose
+        ).as_df.to_csv(output_path, sep = '\t', index = False)
+
+
+@anecdote.command()
+@argument('path', type = str)
+def stats(path: str):
+    df = read_csv(path, sep = '\t')
+
+    texts = df['text'].astype(str).tolist()
+
+    print(f'{len(texts)} anecdotes')
+
+    n_characters = 0
+
+    for text in texts:
+        n_characters += len(text)
+
+    print(f'{n_characters} characters')
 
 
 @anecdote.command()
