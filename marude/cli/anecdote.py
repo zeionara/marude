@@ -9,6 +9,9 @@ from pydub.exceptions import CouldntDecodeError
 from pandas import read_csv, concat
 from tasty import pipe
 
+from bark import SAMPLE_RATE, generate_audio, preload_models
+from scipy.io.wavfile import write as write_wav
+
 from ..Anecdote import AnecdoteCollection
 from ..util.string import segment, add_sentence_terminators
 from ..CloudVoiceClient import CloudVoiceClient
@@ -38,6 +41,16 @@ def fetch(output_path: str, batch_size: int, after: str, community: str, max_n_b
         AnecdoteCollection.from_vk(
             community, datetime.now(), batch_size = batch_size, after = anecdotes, max_n_batches = max_n_batches, verbose = verbose
         ).as_df.to_csv(output_path, sep = '\t', index = False)
+
+
+@anecdote.command()
+@argument('text', type = str)
+def bark(text: str):
+    preload_models()
+
+    audio = generate_audio(text)
+
+    write_wav('assets/audio.wav', SAMPLE_RATE, audio)
 
 
 @anecdote.command()
