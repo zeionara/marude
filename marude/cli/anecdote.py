@@ -55,10 +55,13 @@ def bark(text: str):
 
 @anecdote.command()
 @argument('path', type = str)
-def stats(path: str):
+@option('--tail', '-t', type = int, help = 'do not count first n anecdotes')
+def stats(path: str, tail: int = None):
     df = read_csv(path, sep = '\t')
 
-    texts = df['text'].astype(str).tolist()
+    texts = (
+        df['text'] if tail is None else df['text'][tail:]
+    ).astype(str).tolist()
 
     print(f'{len(texts)} anecdotes')
 
