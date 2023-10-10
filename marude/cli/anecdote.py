@@ -6,7 +6,7 @@ from pathlib import Path
 from click import argument, option
 from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
-from pandas import read_csv, concat
+from pandas import read_csv, concat, DataFrame
 from tasty import pipe
 
 from bark import SAMPLE_RATE, generate_audio, preload_models
@@ -17,6 +17,7 @@ from ..util.string import segment, add_sentence_terminators
 from ..CloudVoiceClient import CloudVoiceClient
 
 from .main import main
+from ..util import squeeze, to_date_time, from_date_time
 
 
 @main.group()
@@ -135,3 +136,40 @@ def merge(input_paths: tuple[str], output_path: str, keep_source: bool):
 
     # print(concat(dfs).reset_index())
     concat(dfs).to_csv(output_path, sep = '\t', index = False)
+
+
+@anecdote.command()
+@argument('input-path', type = str)
+@argument('output-path', type = str)
+def deduplicate(input_path: str, output_path: str):
+    # df = AnecdoteCollection.from_file(input_path).as_df[:1000]
+    df = read_csv(input_path, sep = '\t')
+
+    df['squeezed'] = df.text.apply(squeeze)
+
+    def aggregate(x):
+        n_rows, _ = x.shape
+
+        if n_rows < 2:
+            return x
+
+        row = {}
+
+        row['text'] = [max(x.text, key = len)]
+        row['published'] = [from_date_time(x.published.apply(to_date_time).min())]
+        row['id'] = [x['id'].min()]
+        row['n-likes'] = [x['n-likes'].sum()]
+        row['n-views'] = [x['n-views'].sum()]
+        row['accessed'] = [from_date_time(x.accessed.apply(to_date_time).min())]
+        row['source'] = [x.source.iloc[-1]]
+
+        df = DataFrame.from_dict(row)
+
+        df.index = [x.index.max()]
+
+        return df
+
+    df = df.groupby('squeezed', group_keys = False).apply(aggregate).drop('squeezed', axis = 1).sort_index().reset_index(drop = True)
+    # df['n-views'] = df['n-views'].astype(int)
+
+    df.to_csv(output_path, sep = '\t', index = False)
