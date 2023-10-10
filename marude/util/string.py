@@ -57,3 +57,7 @@ def segment(string: str, max_length: int = 1024):
     append_current_segment()
 
     return tuple(segments)
+
+
+def squeeze(string: str):
+    return SPACE_SEQUENCE.sub('', string).lower()

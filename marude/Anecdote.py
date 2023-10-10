@@ -10,6 +10,7 @@ from requests import post
 from tasty import pipe
 from pandas import DataFrame, read_csv
 
+from .util import squeeze
 from .util.string import normalize_spaces, normalize_dots, from_date_time, to_date_time
 
 
@@ -56,9 +57,10 @@ class Anecdote:
 
 
 class AnecdoteCollection:
-    def __init__(self, items: list[Anecdote], ids: set[int]):
+    def __init__(self, items: list[Anecdote], ids: set[int], texts: set[str] = None):
         self.items = items
         self.ids = ids
+        self.texts = texts
 
     @classmethod
     def from_vk(cls, domain: str, accessed: datetime, batch_size: int = 100, timeout: int = 10, after: AnecdoteCollection = None, max_n_batches: int = None, verbose: bool = False):
@@ -100,6 +102,7 @@ class AnecdoteCollection:
 
                     n_new_item_objects = 0
                     n_skipped = 0
+                    n_duplicates = 0
 
                     for item in new_items:
                         text = item['text']
@@ -139,7 +142,13 @@ class AnecdoteCollection:
                         items.append(item)
                         ids.add(item_id)
 
-                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects + n_skipped}-{n_skipped}/{n_new_items})')
+                        # if verbose:
+                        # print(None if after is None else after.is_duplicate(item))
+
+                        if after is not None and after.is_duplicate(item):
+                            n_duplicates += 1
+
+                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects + n_skipped}-{n_skipped}-{n_duplicates} = {n_new_item_objects - n_duplicates}/{n_new_items})')
 
                     if is_last_batch is True or max_n_batches is not None and n_batches >= max_n_batches:
                         break
@@ -154,12 +163,20 @@ class AnecdoteCollection:
 
         items = []
         ids = set()
+        texts = set()
 
         for item in df.to_dict('records'):
             items.append(item := Anecdote.from_dict(item))
-            ids.add(item.id_)
 
-        return AnecdoteCollection(items, ids)
+            ids.add(item.id_)
+            texts.add(squeeze(item.text))
+
+        return AnecdoteCollection(items, ids, texts)
+
+    def is_duplicate(self, item: Anecdote):
+        texts = self.texts
+
+        return False if texts is None else squeeze(item.text) in texts
 
     def __contains__(self, item: Anecdote):
         return item.id_ in self.ids

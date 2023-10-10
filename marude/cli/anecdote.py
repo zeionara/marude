@@ -121,12 +121,15 @@ def anecdote_tts(input_path: str, output_path: str):
 @anecdote.command()
 @argument('input-paths', nargs = -1, type = str)
 @argument('output-path', nargs = 1, type = str)
-def merge(input_paths: tuple[str], output_path: str):
+@option('--keep-source', '-k', is_flag = True, help = 'do not auto-update source column according to the input file names')
+def merge(input_paths: tuple[str], output_path: str, keep_source: bool):
     dfs = []
 
     for input_path in input_paths:
         local_df = read_csv(input_path, sep = '\t')
-        local_df['source'] = Path(input_path).stem
+
+        if not keep_source:
+            local_df['source'] = Path(input_path).stem
 
         dfs.append(local_df)
 
