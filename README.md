@@ -33,7 +33,7 @@ python -m marude tts 'Привет, мир' -m pavel -p message.mp3
 
 The provided text (which must be 1024 characters long or shorter) will be converted into speech and saved as an audiofile `message.mp3`. By default the file is saved at `assets/message.mp3`.
 
-There is an auxiliary script `fetch.sh` for generating patches to the `baneks` dataset, which should be used like this:
+There is an auxiliary script `fetch.sh` for generating patches to the [`baneks` dataset](https://www.kaggle.com/datasets/zeionara/anecdotes), which should be used like this:
 
 ```sh
 ./fetch.sh 10.10.2023 16.09.2023
