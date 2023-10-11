@@ -1,10 +1,10 @@
-from os import makedirs, path as os_path, remove
+from os import makedirs, path as os_path, remove, walk
 from multiprocessing import Queue, Process
 
 from click import group, argument, option, Choice
 from tasty import pipe
 from tqdm import tqdm
-# import taglib
+import taglib
 # from pydub.utils import mediainfo
 import ffmpeg
 
@@ -122,3 +122,14 @@ def split(input_path: str, output_path: str, shortest_silence: float, shortest_p
         return
 
     split_(input_path, output_path, shortest_silence, longest_part, shortest_part)
+
+
+@main.command()
+@argument('input-path', type = str)
+def rename(input_path: str):
+    for root, _, files in walk(input_path):
+        for file in files:
+            tags = (file_ := taglib.File(os_path.join(root, file))).tags
+
+            tags['TITLE'] = [f"{file | pipe | drop_extension} {tags['ALBUM'][0]}"]
+            file_.save()

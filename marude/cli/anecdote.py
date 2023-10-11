@@ -1,4 +1,4 @@
-from os import makedirs, path
+from os import makedirs, path, link
 from io import BytesIO
 from datetime import datetime
 from pathlib import Path
@@ -8,6 +8,7 @@ from pydub import AudioSegment
 from pydub.exceptions import CouldntDecodeError
 from pandas import read_csv, concat, DataFrame
 from tasty import pipe
+from tqdm import tqdm
 
 from bark import SAMPLE_RATE, generate_audio, preload_models
 from scipy.io.wavfile import write as write_wav
@@ -18,6 +19,8 @@ from ..CloudVoiceClient import CloudVoiceClient
 
 from .main import main
 from ..util import squeeze, to_date_time, from_date_time
+
+from .SpeechIndex import SpeechIndex
 
 
 @main.group()
@@ -157,7 +160,7 @@ def deduplicate(input_path: str, output_path: str):
 
         row['text'] = [max(x.text, key = len)]
         row['published'] = [from_date_time(x.published.apply(to_date_time).min())]
-        row['id'] = [x['id'].min()]
+        row['id'] = [x.id.iloc[-1]]
         row['n-likes'] = [x['n-likes'].sum()]
         row['n-views'] = [x['n-views'].sum()]
         row['accessed'] = [from_date_time(x.accessed.apply(to_date_time).min())]
@@ -173,3 +176,37 @@ def deduplicate(input_path: str, output_path: str):
     # df['n-views'] = df['n-views'].astype(int)
 
     df.to_csv(output_path, sep = '\t', index = False)
+
+
+N_BATCH = 1_000
+
+
+@anecdote.command()
+@argument('anecdotes', type = str)  # tsv file with ids to select
+@argument('input-path', type = str)  # folder with audio files to select from
+@argument('output-path', type = str)  # an emtpy folder to select to
+def select(anecdotes: str, input_path: str, output_path: str):
+    index = SpeechIndex(input_path)
+
+    df = read_csv(anecdotes, sep = '\t')
+
+    offset = 0
+    batch = None
+
+    n_rows, _ = df.shape
+    bar = tqdm(total = n_rows)
+
+    for i, row in df[['id', 'source']].iterrows():
+        if i >= offset or batch is None:
+            batch = path.join(output_path, f'{offset + 1:06d}-{(offset := min(offset + N_BATCH, n_rows)):06d}')
+
+            if not path.exists(batch):
+                makedirs(batch)
+
+        location = index.get(source = row['source'], id_ = row['id'])
+
+        link_path = path.join(batch, location.file)
+        if not path.exists(link_path):
+            link(location.path, link_path)
+
+        bar.update()
