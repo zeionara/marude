@@ -1,0 +1,12 @@
+[submodule "submodules/fuck"]
+	path = submodules/fuck
+	url = git@github.com:zeionara/fuck.git
+[submodule "submodules/raconteur"]
+	path = submodules/raconteur
+	url = git@github.com:zeionara/raconteur
+[submodule "submodules/much"]
+	path = submodules/much
+	url = git@github.com:zeionara/much
+[submodule "submodules/karma"]
+	path = submodules/karma
+	url = git@github.com:zeionara/karma

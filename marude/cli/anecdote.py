@@ -10,7 +10,7 @@ from pandas import read_csv, concat, DataFrame
 from tasty import pipe
 from tqdm import tqdm
 
-from bark import SAMPLE_RATE, generate_audio, preload_models
+# from bark import SAMPLE_RATE, generate_audio, preload_models
 from scipy.io.wavfile import write as write_wav
 
 from ..Anecdote import AnecdoteCollection

@@ -25,6 +25,38 @@ conda activate marude
 
 ## Usage
 
+### Anecdotes
+
+There is an auxiliary script `fetch.sh` for generating [`baneks` dataset](https://huggingface.co/datasets/zeio/baneks), which should be used invoked this:
+
+```sh
+./fetch.sh 05.11.2025
+```
+
+This script accepts version name which may be an arbitrary string.
+
+Then to transform the generated dataset to speech:
+
+```sh
+python -m rr handle-aneks -s assets/baneks/05.11.2025/default.tsv -d assets/baneks-speech -e salute -rk
+```
+
+Where `assets/baneks-speech` should contain previously generated audio files to avoid making duplicates.
+
+Then to copy new files to a separate folder use a command like:
+
+```sh
+ls -alth | grep Nov | grep mp3 | awk '{print $9}' | xargs -I {} mv {} ../baneks-speech-new/
+```
+
+And to generate an archive run the following command:
+
+```sh
+tar -cJvf ../../baneks-speech/speech/040001-040720.tar.xz -C /home/zeio/raconteur/assets/baneks-speech-new/ .
+```
+
+### Etc
+
 After the environment is set up, the app can be used from the command line: 
 
 ```sh
@@ -32,14 +64,6 @@ python -m marude tts 'Привет, мир' -m pavel -p message.mp3
 ```
 
 The provided text (which must be 1024 characters long or shorter) will be converted into speech and saved as an audiofile `message.mp3`. By default the file is saved at `assets/message.mp3`.
-
-There is an auxiliary script `fetch.sh` for generating patches to the [`baneks` dataset](https://www.kaggle.com/datasets/zeionara/anecdotes), which should be used like this:
-
-```sh
-./fetch.sh 10.10.2023 16.09.2023
-```
-
-Here, first comes the name of the new dataset version, and then the name of the base dataset version.
 
 The module can be used programmatically as well. First, install the system-wise dependencies:
 
