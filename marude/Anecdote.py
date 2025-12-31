@@ -69,6 +69,7 @@ class AnecdoteCollection:
         ids = set()
 
         n_batches = 0
+        n_duplicated_ids = 0
 
         is_last_batch = None if after is None else False
 
@@ -105,6 +106,10 @@ class AnecdoteCollection:
                     n_duplicates = 0
 
                     for item in new_items:
+                        if item['id'] in ids:
+                            n_duplicated_ids += 1
+                            continue
+
                         text = item['text']
 
                         if not text or URL_PATTERN.search(text):
@@ -148,7 +153,13 @@ class AnecdoteCollection:
                         if after is not None and after.is_duplicate(item):
                             n_duplicates += 1
 
-                    print(f'Handled {offset}/{response_["count"]} items (+{n_new_item_objects + n_skipped}-{n_skipped}-{n_duplicates} = {n_new_item_objects - n_duplicates}/{n_new_items})')
+                    print(
+                        (
+                            f'Handled {offset - n_duplicated_ids}/{response_["count"]} items '
+                            f'(+{n_new_item_objects + n_skipped}-{n_skipped}-{n_duplicates} = '
+                            f'{n_new_item_objects - n_duplicates}/{n_new_items})'
+                        )
+                    )
 
                     if is_last_batch is True or max_n_batches is not None and n_batches >= max_n_batches:
                         break
